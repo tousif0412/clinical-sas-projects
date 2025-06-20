@@ -5,14 +5,13 @@ This repository contains mock clinical trial programming work based on CDISC sta
 
 ## 🔍 What's Inside
 
-| Folder | Description |
-|--------|-------------|
-| `SDTM`  | 
-| `DM/`  | Derivation of Demographics (DM) dataset from raw data |
-| `AE/`  | Creation of Adverse Events (AE) dataset |
-| `EX/`  | Creation of Exposure (EX) dataset |
-| `LB/`  | Creation of Laboratory (LB) dataset |
-| `VS/`  | Creation of Vital Sign (VS) dataset |
+| Folder        | Description |
+|---------------|-------------|
+| `/Raw_Datasets/` | Mock source datasets (e.g., DM, AE, VS) |
+| `/SDTM/`      | SDTM domain programming (e.g., DM, AE, VS, LB) |
+| `/ADaM/`      | ADaM derivations (e.g., ADSL, ADAE) |
+| `/TLF/`       | Tables, Listings, Figures using PROC REPORT & ODS |
+| `/Documents/` | Specs, define.xml mockups, CRF annotations |
 
 ## 🛠️ Tools Used
 - SAS 9.4
