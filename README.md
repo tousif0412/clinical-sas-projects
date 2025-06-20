@@ -10,9 +10,9 @@ This repository contains mock clinical trial programming work based on CDISC sta
 | `SDTM`  | 
 | `DM/`  | Derivation of Demographics (DM) dataset from raw data |
 | `AE/`  | Creation of Adverse Events (AE) dataset |
-| `EX/`  | Creation of Adverse Events (AE) dataset |
-| `LB/`  | Creation of Adverse Events (AE) dataset |
-| `VS/`  | Creation of Adverse Events (AE) dataset |
+| `EX/`  | Creation of Exposure (EX) dataset |
+| `LB/`  | Creation of Laboratory (LB) dataset |
+| `VS/`  | Creation of Vital Sign (VS) dataset |
 
 ## 🛠️ Tools Used
 - SAS 9.4
