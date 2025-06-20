@@ -25,11 +25,15 @@ The DM domain provides subject-level data such as age, sex, race, and other key 
 | `STUDYID`  | Study Identifier |
 | `USUBJID`  | Unique Subject Identifier |
 | `SUBJID`   | Subject ID |
-| `RFSTDTC`  | Reference Start Date |
+| `RFSTDTC`  | Reference Start Date and Time|
+| `RFENDTC`     | Reference End Date and Time |
 | `BRTHDTC`  | Birth Date |
 | `AGE`      | Age at Screening |
+| `AGEU`      | Age units |
 | `SEX`      | Sex |
 | `RACE`     | Race |
+| `ETHINIC`      | Ethinicity|
+| `COUNTRY`      | Country|
 
 ---
 
