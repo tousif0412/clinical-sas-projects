@@ -9,8 +9,9 @@ This repository contains mock clinical trial programming work based on CDISC sta
 |--------|-------------|
 | `DM/`  | Derivation of Demographics (DM) dataset from raw data |
 | `AE/`  | Creation of Adverse Events (AE) dataset |
-| `TLFs/`| Sample Tables and Listings using PROC REPORT |
-| `validation/` | PROC COMPARE examples for validation of datasets |
+| `EX/`  | Creation of Adverse Events (AE) dataset |
+| `LB/`  | Creation of Adverse Events (AE) dataset |
+| `VS/`  | Creation of Adverse Events (AE) dataset |
 
 ## 🛠️ Tools Used
 - SAS 9.4
