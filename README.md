@@ -7,6 +7,7 @@ This repository contains mock clinical trial programming work based on CDISC sta
 
 | Folder | Description |
 |--------|-------------|
+| `SDTM`  | 
 | `DM/`  | Derivation of Demographics (DM) dataset from raw data |
 | `AE/`  | Creation of Adverse Events (AE) dataset |
 | `EX/`  | Creation of Adverse Events (AE) dataset |
