@@ -10,10 +10,10 @@ The DM domain provides subject-level data such as age, sex, race, and other key 
 
 | File Name              | Description |
 |------------------------|-------------|
-| `Programs.sas`               | SAS program to transform raw subject-level data into SDTM-compliant DM dataset. |
+| `Programs.sas`         | SAS program to transform raw subject-level data into SDTM-compliant DM dataset. |
 | `raw_dm.csv`           | Mock raw dataset used as input, containing subject IDs, birth dates, sex, race, etc. |
 | `dm_final.csv`         | Output dataset in SDTM format (preview version). |
-| `dm_mapping_spec.xlsx` | (Optional) Mapping/spec document showing how raw variables were transformed to SDTM variables. |
+| `dm_mapping_spec.xlsx` | Mapping/spec document showing how raw variables were transformed to SDTM variables. |
 | `README.md`            | Overview of the DM domain and file explanations. |
 
 ---
