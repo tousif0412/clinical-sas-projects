@@ -11,7 +11,7 @@ The AE domain captures details about any adverse events experienced by subjects 
 | File Name        | Description |
 |------------------|-------------|
 | `Programe`         | SAS program to transform raw AE data into SDTM AE format. |
-| `raw_ae.csv`     | Mock raw adverse events data (event term, start date, severity, etc.). |
+| `raw_ae.xlsx`     | Mock raw adverse events data (event term, start date, severity, etc.). |
 | `ae_final.csv`   | Output SDTM-compliant AE dataset. |
 | `ae_mapping_spec.xlsx` | Mapping/specification file for AE domain creation. |
 | `README.md`      | Description of the AE domain structure and files. |
