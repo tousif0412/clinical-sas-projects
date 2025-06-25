@@ -28,7 +28,7 @@ proc print data=lb (obs=10); run;
 
 
 
-/* Step 11: Save Final DM Dataset to Output Folder */
+/* Step 3: Save Final DM Dataset to Output Folder */
 
 libname Output'/home/u63981529/LB_sdtm/Output';
 run;
@@ -37,7 +37,7 @@ Data Output.LB ;
 Set lb;
 run;
 
-/* Export DM to CSV */
+/*  Step 4: Export DM to CSV */
 
 proc export data=Output.LB
     outfile="/home/u63981529/LB_sdtm/Output/LB_final.csv"
