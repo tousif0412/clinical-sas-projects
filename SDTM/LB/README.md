@@ -10,10 +10,10 @@ The LB domain summarizes laboratory test results for each subject at various tim
 
 | File Name       | Description |
 |------------------|-------------|
-| `lb.sas`         | SAS script to process and transform lab data. |
+| `Program.sas`         | SAS script to process and transform lab data. |
 | `raw_lb.csv`     | Raw lab test results. |
 | `lb_final.csv`   | SDTM-formatted LB dataset. |
-| `lb_mapping_spec.xlsx` | Variable transformation plan. |
+| `lb_spec.xlsx` | Variable transformation plan. |
 | `README.md`      | This file. |
 
 ---
