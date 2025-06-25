@@ -10,7 +10,7 @@ The EX domain describes study treatment exposure: what dose was given, when, and
 
 | File Name       | Description |
 |------------------|-------------|
-| `ex.sas`         | SAS script to transform dosing records into SDTM EX format. |
+| `Program.sas`         | SAS script to transform dosing records into SDTM EX format. |
 | `raw_ex.csv`     | Raw dosing data for each subject. |
 | `ex_final.csv`   | Output EX dataset in SDTM format. |
 | `ex_mapping_spec.xlsx` | Variable mapping specifications. |
