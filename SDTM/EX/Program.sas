@@ -40,8 +40,7 @@ run;
 
 Data Output.EX ;
 Set ex ;
-Proc sort ; By USUBJID ;
-Run ;
+run;
 
 /* Export DM to CSV */
 
