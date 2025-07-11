@@ -2,7 +2,6 @@
 
 This folder contains SAS programming and mock data for the creation of the **Demographics (DM)** domain as per **CDISC SDTM standards**.
 
-The DM domain provides subject-level data such as age, sex, race, and other key baseline demographic characteristics from a mock clinical trial dataset.
 
 ---
 
