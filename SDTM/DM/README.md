@@ -18,7 +18,7 @@ The DM domain provides subject-level data such as age, sex, race, and other key 
 
 ---
 
-## 🔧 Key Variables in DM Domain
+##  Key Variables in DM Domain
 
 | Variable   | Description |
 |------------|-------------|
@@ -35,11 +35,3 @@ The DM domain provides subject-level data such as age, sex, race, and other key 
 | `ETHINIC`      | Ethinicity|
 | `COUNTRY`      | Country|
 
----
-
-## 🔍 What This Program Demonstrates
-
-✅ Importing raw data using `PROC IMPORT`  
-✅ Variable transformation and formatting  
-✅ Assigning labels and SDTM-compliant formats  
-✅ Creating a final SDTM domain with validated
