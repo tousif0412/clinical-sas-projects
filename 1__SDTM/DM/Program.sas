@@ -239,7 +239,7 @@ libname Output '/home/u63981529/SDTM-DM/Outputs';
 run;
 
 Data Output.DM1 ;
-Set Final ;
+Set Final1 ;
 Proc sort ; By USUBJID ;
 Run ;
 
