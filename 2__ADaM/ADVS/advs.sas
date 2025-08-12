@@ -1,19 +1,10 @@
-/*******************************************************************
-* Client:  xxxxxx                                                          
-* Project:  yyyyyyy                                                   
+/*******************************************************************                                              
 * Program: ADVS.SAS  
 *
-* Program Type: ADAM
+* Program Type: ADAM               
 *
-* Purpose: To produce ADVS
-* Usage Notes: 
-*
-* SAS� Version: 9.4
-* Operating System: Windows 2003 R2 Standard Edition.                   
-*
-* Author: Arjun
-* Date Created: 15-JUL-2022
-* Modification History:
+* Author: Tousif
+* Date Created: 20-JUL-2025
 *******************************************************************/          
 libname sdtm '/home/u63925560/CL/sdtm';
 libname adam '/home/u63925560/CL/adam';
