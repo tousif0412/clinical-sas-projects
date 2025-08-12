@@ -1,19 +1,10 @@
-/*******************************************************************
-* Client:  xxxxxx                                                          
-* Project:  yyyyyyy                                                   
+/*******************************************************************                                               
 * Program: ADSL.SAS  
 *
-* Program Type: ADAM
+* Program Type: ADAM          
 *
-* Purpose: To produce ADSL
-* Usage Notes: 
-*
-* SAS� Version: 9.4
-* Operating System: Windows 2003 R2 Standard Edition.                   
-*
-* Author: Arjun
-* Date Created: 11-JUN-2022
-* Modification History:
+* Author: Tousif
+* Date Created: 27-JUN-2025
 *******************************************************************/          
 libname sdtm '/home/u63925560/CL/sdtm';
 
