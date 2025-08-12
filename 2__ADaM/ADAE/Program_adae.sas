@@ -1,19 +1,10 @@
-/*******************************************************************
-* Client:  xxxxxx                                                          
-* Project:  yyyyyyy                                                   
+/*******************************************************************                                              
 * Program: ADCM.SAS  
 *
-* Program Type: ADAM
+* Program Type: ADAM               
 *
-* Purpose: To produce ADAE
-* Usage Notes: 
-*
-* SAS� Version: 9.4
-* Operating System: Windows 2003 R2 Standard Edition.                   
-*
-* Author: Arjun
-* Date Created: 11-JUN-2022
-* Modification History:
+* Author: Tousif
+* Date Created: 11-JUL-2025
 *******************************************************************/          
 libname sdtm '/home/u63981529/CL/sdtm';
 libname adam '/home/u63981529/CL/adam';
