@@ -1,0 +1,163 @@
+/* STEP 1: Read ADSL and Prepare Basic Variables */
+
+libname adam"/home/u63981529/CL/adam";				     /* Points to the ADaM library. */
+run;
+ 
+data adsl01;
+    set adam.adsl;
+    where saffl="Y";
+run;
+ 
+/* STEP 2: Create TOTAL Column */
+
+data adsl02;
+    set adsl01;
+    treatment=trt01pn;										/* First output = actual treatment group */
+    treatmentc=trt01p;
+    output;
+    treatment=4;											/*  Second output = Total column */
+    treatmentc="Total";
+    output;
+run;
+ 
+/* Create a format for treatment levels - using proc format */
+proc format;
+    value treatment
+    1=1
+    2=2
+    3=3
+    4=4
+    ;
+run;
+ 
+/* STEP 4: Calculate Descriptive Statistics (PROC SUMMARY) */
+proc summary data=adsl02 nway completetypes;
+    class treatment/preloadfmt;
+    var  age;
+    output out=stats01 n= nmiss= mean= std= min= q1= median= q3= max= /autoname;
+    format treatment treatment.;
+run;
+ 
+/* STEP 5: Format Statistics for Display */
+
+data stats02;
+    set stats01;
+    length mean std q1 q3 min max nnmiss meanstd median q1q3 minmax $30;
+ 
+    *process individual statistics;
+ 
+ 
+    if age_mean ne . then mean=put(age_mean,5.1);
+ 
+    if age_stddev ne . then std=" ("||put(age_stddev,6.2)||")";
+    else std=" ( - )";
+ 
+    if age_median ne . then median=put(age_median,5.1);
+ 
+    if age_q1 ne . then q1=put(age_q1,5.1);
+ 
+    if age_q3 ne . then q3=put(age_q3,5.1);
+ 
+    if age_min ne . then min=put(age_min,3.);
+ 
+    if age_max ne . then max=put(age_max,3.);
+ 
+    *create combined statistics;
+    nnmiss=put(age_n,3.)||" ("||put(age_nmiss,3.)||")";
+    if age_n ne 0 then do;
+        meanstd=trim(mean)||trim(std);
+        q1q3=trim(q1)||","||trim(q3);
+        minmax=trim(min)||","||trim(max);
+    end;
+run;
+ 
+/* STEP 6: Keep Required Variables Only */
+
+data stats03;
+    set stats02;
+    keep treatment nnmiss meanstd q1q3 median minmax;
+run;
+ 
+/* STEP 7: Transpose Statistics into Rows */
+proc sort data=stats03;
+    by treatment;
+run;
+ 
+proc transpose data=stats03 out=stats04;
+    by treatment;
+    var nnmiss meanstd median q1q3 minmax;
+run;
+ 
+/* STEP 8: Create Ordering & Labels */
+data stats05;
+    set stats04;
+ 
+    group=1;
+ 
+    length grouplabel statistic $200;
+ 
+    grouplabel="Age (years)";
+ 
+    _name_=upcase(_name_);
+ 
+    if _name_="NNMISS"  then do; intord=1; statistic="n (missing)"; end;
+    if _name_="MEANSTD" then do; intord=2; statistic="Mean (SD)";   end;
+    if _name_="MEDIAN"  then do; intord=3; statistic="Median";      end;
+    if _name_="Q1Q3"    then do; intord=4; statistic="Q1, Q3"; end;
+    if _name_="MINMAX"  then do; intord=5; statistic="Min, Max"; end;
+run;
+ 
+/* STEP 9: Transpose Treatments into Columns */
+ 
+proc sort data=stats05;
+    by group grouplabel intord statistic;
+run;
+ 
+proc transpose data=stats05 out=stats06 prefix=trt;
+    by group grouplabel intord statistic;
+    var col1;
+    id treatment;
+run;
+ 
+/* STEP 10: Create Final Dataset */
+ 
+data final;
+    set stats06;
+    keep group grouplabel intord statistic trt1 trt2 trt3 trt4;
+run;
+ 
+/* STEP 11: Generate RTF Report */
+ 
+ 
+%rtf_output_style_setup;
+ 
+footnote "&outputname.";
+title "Descriptive statistics for a single numeric variable - Age";
+title2 "Full Analysis Set";
+title3 bcolor="#e6f9ec" "Copyright @ www.mycsg.in";
+footnote2 j=l "SD=Standard deviation;";
+ods listing close;
+ods rtf file="&outputpath.\&outputname." style=csgpool01;
+ 
+ 
+proc report data = final center headline headskip nowd split='~' missing style(report)=[just=center]
+   style(header)=[just=center];
+ 
+   column group grouplabel intord statistic trt1 trt2 trt3 trt4 ;
+ 
+   define group/order noprint;
+   define intord /order noprint;
+ 
+   define grouplabel/width=30 " " order style(column)=[cellwidth=1.5in protectspecialchars=off] style(header)=[just=left];
+   define statistic/width=30 "Statistic" style(column)=[cellwidth=1in protectspecialchars=off] style(header)=[just=left];
+ 
+   define trt1/"Dose level 1"   style(column)=[cellwidth=1.2in just=center] ;
+   define trt2/"Dose level 2"   style(column)=[cellwidth=1.2in just=center]   ;
+   define trt3/"Dose level 3"   style(column)=[cellwidth=1.2in just=center]   ;
+   define trt4/"Total"          style(column)=[cellwidth=1.2in just=center]   ;
+ 
+run;
+ 
+ 
+ods rtf close;
+ods listing;
