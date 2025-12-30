@@ -1,0 +1,230 @@
+/* STEP 1: Read ADSL and Prepare Basic Variables */
+libname adam"/home/u63981529/CL/adam";					/* Points to the ADaM library. */
+run;
+
+data adsl01;
+    set adam.adsl;
+    where SAFFL="Y";
+    if sex ="F" then asex="Female";
+    else if sex="M" then asex="Male";
+    arace=propcase(race);
+run;
+
+/* STEP 2: Create TOTAL Column */
+
+data adsl02;
+    set adsl01;
+ 
+    length treatmentc $100;
+ 
+    treatment=trt01pn;								/* First output = actual treatment group */
+    treatmentc=trt01p;
+    output;
+ 
+    treatment=4;									/*  Second output = Total column */
+    treatmentc="Total";
+    output;
+run;
+ 
+/* STEP 3: Get Treatment Totals (N values) */
+  
+data dummy_trttotals;							      	/* Create dummy treatment rows */
+    do treatment=1,2,3,4;
+        output;
+    end;
+run;
+ 
+ 
+proc freq data=adsl02;								      /* Calculate actual N using PROC FREQ */
+    tables  treatment  /out=trttotals01(rename=(count=trttotal) drop=percent);
+run;
+ 
+ 
+data trttotals;
+    merge dummy_trttotals(in=a) trttotals01(in=b);			/* Merge dummy + actual totals */
+    by treatment;
+    if a and not b then trttotal=0;
+run;
+ 
+/* Create macro variables (N=&trt1, &trt2...) */	/* Used later in report headers: Dose level 1 (N=xx) */
+ 
+data _null_;
+    set trttotals;
+    call symputx(cats("trt",treatment),trttotal);
+run;
+ 
+/* STEP 4: Create Utility Structure for Sex and Race*/
+ 
+data adsl03;
+    set adsl02;
+ 
+ 
+    length statistic $100;
+ 
+    group=1;										/* Sex block Group 1 → Sex */
+ 
+    if not missing(asex) then statistic=asex;
+    else statistic="Missing";
+    output;
+ 
+    call missing(statistic);
+ 
+    group=2;									/* Race block Group 1 → Race */
+    if not missing(arace) then statistic=arace;
+    else statistic="Missing";
+ 
+    output;
+run;
+ 
+/* STEP 5: Get Counts (n) for Each Category */
+
+proc freq data=adsl03 noprint;
+    tables group*treatment*statistic/out=counts01(drop=percent);
+run;
+ 
+ 
+/* STEP 6: Create Dummy Rows (Ensure 0 Counts Appear) */
+
+data dummy01;
+    length grouplabel statistic $100;
+ 
+    group=1; grouplabel="Sex, n(%)";
+ 
+    intord=1;  statistic="Male";    output;
+    intord=2;  statistic="Female";  output;
+    intord=99; statistic="Missing"; output;
+ 
+    group=2; grouplabel="Race, n(%)";
+ 
+    intord=1;  statistic="Asian ";                     output;
+    intord=2;  statistic="Black Or African American";  output;
+    intord=3;  statistic="White";                      output;
+    intord=4;  statistic="Not reported";               output;
+    intord=99; statistic="Missing";                    output;
+run;
+ 
+/*----------------------------------------------------------
+Create a row for each treament for record present in dummy01 - using a do loop with output statement
+----------------------------------------------------------*/
+data dummy02;
+    set dummy01;
+    do treatment=1,2,3,4;
+        output;
+    end;
+run;
+ 
+/* STEP 7: Merge Dummy Counts with Actual Counts */
+ 
+proc sort data=dummy02;
+    by group treatment statistic;
+run;
+ 
+proc sort data=counts01;
+    by group treatment statistic;
+run;
+ 
+data counts02;
+    merge dummy02(in=a) counts01(in=b);
+    by group treatment statistic;
+    if a and not b then count=0;
+run;
+
+/* STEP 8: Calculate Percentages */
+
+/*  Sort treatment totals and counts */
+proc sort data=trttotals;
+    by treatment;
+run;
+ 
+proc sort data=counts02;
+    by treatment;
+run;
+ 
+data counts03;
+    merge counts02(in=a) trttotals(in=b);
+    by treatment;
+run;
+ 
+/*----------------------------------------------------------
+Create percentage variable and concatenate count and percentage into a single variable
+----------------------------------------------------------*/
+ 
+data counts04;
+    set counts03;
+ 
+    if trttotal ne 0 then percent=count/trttotal*100;
+ 
+    length cp $30;
+ 
+    if count ne 0 then do;
+        if percent ne 100 then cp=put(count,3.)||" ("||strip(put(percent,5.1))||")";
+        else cp=put(count,3.)||" ("||strip(put(percent,3.))||")";
+    end;
+    else do;
+       cp=put(count,3.);
+    end;
+run;
+ 
+/**********************************************************
+Restructure the dataset such that treatments appear as columns - using proc transpose
+**********************************************************/
+ 
+proc sort data=counts04;
+    by group grouplabel intord statistic;
+run;
+ 
+proc transpose data=counts04 out=counts05 prefix=trt;
+    by group grouplabel intord statistic;
+    var cp;
+    id treatment;
+run;
+ 
+/**********************************************************
+Create final dataset - keeping only required variables
+**********************************************************/
+ 
+data final;
+    set counts05;
+    keep group grouplabel intord statistic trt1 trt2 trt3 trt4;
+run;
+ 
+/**********************************************************
+Report generation
+**********************************************************/
+ 
+ 
+%rtf_output_style_setup;
+ 
+footnote "&outputname.";
+title "Summary for categorical variables - two variables - Sex and race";
+title2 "Full Analysis Set";
+title3 bcolor="#e6f9ec" "Copyright @ www.mycsg.in";
+footnote2 j=l "Percentages are calculated based on the number of subjects in each treatment.";
+ods listing close;
+ods rtf file="&outputpath.\&outputname." style=csgpool01;
+ 
+ 
+proc report data = final center headline headskip nowd split='~' missing style(report)=[just=center]
+   style(header)=[just=center];
+ 
+   column group grouplabel intord statistic trt1 trt2 trt3 trt4 ;
+ 
+   define group/order noprint;
+   define intord /order noprint;
+ 
+   define grouplabel/width=30 "Variable" order style(column)=[cellwidth=1.2in protectspecialchars=off] style(header)=[just=left];
+   define statistic/width=30 "Statistic" style(column)=[cellwidth=1.5in protectspecialchars=off] style(header)=[just=left];
+ 
+   define trt1/"Dose level 1" "(N=&trt1.)"   style(column)=[cellwidth=1.2in just=center] ;
+   define trt2/"Dose level 2" "(N=&trt2.)"  style(column)=[cellwidth=1.2in just=center]   ;
+   define trt3/"Dose level 3" "(N=&trt3.)"  style(column)=[cellwidth=1.2in just=center]   ;
+   define trt4/"Total"        "(N=&trt4.)"  style(column)=[cellwidth=1.2in just=center]   ;
+ 
+   compute after group;
+     line @1 "";
+   endcomp;
+run;
+ 
+ 
+ods rtf close;
+ods listing;
