@@ -1,0 +1,178 @@
+libname Raw"/home/u63981529/CL/RAW";run;
+
+
+data ex_data;
+set raw.ex;
+run;
+
+data eX;
+set ex_data;
+STUDYID="AA-2020-06";
+DOMAIN="EX";
+USUBJID=strip(STUDYID)||"T"||strip(SUBNUM);
+
+VISITNUM=VISITID ;
+VISIT=VISNAME ;
+
+/* EXSTDTC */
+
+if EXSTDAT ne . and EXSTTIM ne . then 
+EXSTDTC=strip(put(EXSTDAT,yymmdd10.))||"T"||strip(put(EXSTTIM,TOD8.));
+
+if EXSTDAT ne . and EXSTTIM in ("00:UU","00:00","UU:00","U") then 
+EXSTDTC=strip(put(EXSTDAT,yymmdd10.));
+
+if EXSTDAT ne . and EXSTTIM eq . then
+EXSTDTC=strip(put(EXSTDAT,yymmdd10.));
+
+/* EXENDTC */
+EXENDTC=EXSTDTC ;
+
+if EXDOSE ne . then EXDOSU="ug";
+
+EXDOSFRM="INJECTION";
+EXDOSFRQ="EVERY WEEK";
+EXROUTE="INTRAVENOUS";
+
+
+;
+
+
+proc contents data=raw.ex;run;
+
+proc contents data=raw.ex;
+run;
+
+data ex;
+  set raw.ex;
+
+  length EXSTAT EXREASND EXDOSU $40;
+
+  /* If study drug was taken */
+  if upcase(EXYN) = "Y" then do;
+    EXDOSE = EXDOSE;         /* Use the raw numeric value */
+    EXSTAT = "";
+    EXREASND = "";
+  end;
+
+  /* If study drug was NOT taken */
+  else if upcase(EXYN) = "N" then do;
+    EXDOSE = .;
+    EXSTAT = "NOT DONE";
+    if not missing(EXREAS) then EXREASND = EXREAS;
+    else EXREASND = "Not Taken";
+  end;
+
+run;
+
+
+/* EXSTDY EXENDY */
+proc sort data=sdtm.dm out=dm1 nodupkey;
+by usubjid;
+run;
+
+DATA DM1;
+   SET dm1;
+   RFSTDTC_N = DATEPART (INPUT (RFSTDTC,??IS8601DT.));
+
+   FORMAT RFSTDTC_N YYMMDD10.;
+   KEEP USUBJID RFSTDTC_N;
+RUN;
+
+data EX_date;
+set ex;
+EXSTDTC_N = INPUT (EXSTDTC,??YYMMDD10.);
+EXENDTC_N = INPUT (EXENDTC,??YYMMDD10.);
+
+format EXSTDTC_N EXENDTC_N YYMMDD10.;
+keep USUBJID EXSTDTC_N EXENDTC_N;
+run;
+
+DATA EX_3;
+   MERGE EX(in=a)  DM1(IN=b);
+   BY USUBJID;
+   IF a & b;   
+run;
+
+data EXSTDY_1;
+set EX3;
+IF EXSTDTC_N NE . AND RFSTDTC_N NE . THEN DO;
+   IF EXSTDTC_N >= RFSTDTC_N THEN EXSTDY= EXSTDTC_N - RFSTDTC_N +1;
+      ELSE IF EXSTDTC_N < RFSTDTC_N THEN EXSTDY = EXSTDTC_N - RFSTDTC_N;
+   END;
+
+   IF EXENDTC_N NE . AND RFSTDTC_N NE . THEN DO;
+      IF EXENDTC_N >= RFSTDTC_N THEN EXENDY= EXENDTC_N - RFSTDTC_N +1;
+      ELSE IF EXENDTC_N < RFSTDTC_N THEN EXENDY = EXENDTC_N - RFSTDTC_N;
+   END;
+RUN;
+
+/*=========================================================
+Create EXSEQ variable
+=========================================================*/
+data ex;
+  set raw.ex;
+  by STUDYID SUBJID;
+
+  length DOMAIN $2 USUBJID $40;
+
+  DOMAIN = "EX";
+  USUBJID = catx("-", STUDYID, SUBJID);
+
+  retain EXSEQ;
+  if first.SUBJID then EXSEQ = 1;
+  else EXSEQ + 1;
+run;
+
+
+
+STUDYID
+DOMAIN
+USUBJID
+
+VISITNUM
+VISIT
+EXSTDTC
+EXENDTC
+
+EXDOSE
+EXDOSU
+
+EXDOSFRM
+EXROUTE
+EXDOSFRQ
+
+SUBJID
+SITEID
+
+EXSTDY
+EXENDY
+
+EXSTAT
+EXREASND
+
+EXLOC
+EXLOT
+EXLAT
+EXDIR 
+
+EXFAST
+EXADJ	
+Epoch
+EXDUR
+EXYN
+EXSEQ
+EXCAT
+EXSCAT
+EXTRT
+
+
+
+
+
+
+
+
+
+
+
