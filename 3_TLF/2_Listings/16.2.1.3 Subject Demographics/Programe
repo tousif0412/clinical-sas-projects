@@ -1,0 +1,97 @@
+/* 1. Assign a library reference */
+
+libname adam "/home/u63981529/CL/adam";
+
+/* 2. Create a filtered ADSL dataset */
+;
+
+data adsl;
+   set adam.adsl;
+   keep usubjid trt01p age sex race bhghtsi bwghtsi bbmisi;
+run;
+
+/* 3. Apply manual pagination logic (20 records per page) */
+data adsl;
+   set adsl;
+   retain lnt 0 page1 1;
+
+   lnt + 1;
+   if lnt > 20 then do;
+      page1 = page1 + 1;
+      lnt   = 1;
+   end;
+run;
+
+/* 4. Define report titles and footnotes */
+
+title1 j=l "COVID-19 AA";
+title2 j=l "Protocol: 043";
+title3 j=c "16.2.1.3 Subject Demographics";
+
+footnote1 j=l "/home/u63925560/CL/Program/tlf/DEMOG.SAS";
+footnote2 j=r "Page ^{thispage} of ^{lastpage}";
+
+/* 5. Generate the report using PROC REPORT */
+
+proc report data=adsl nowd split='|' style={outputwidth=100%};
+column page1 usubjid trt01p age sex race bhghtsi bwghtsi bbmisi;
+
+define page1 / order noprint;
+
+define usubjid / order "Subject|Number"
+      style(column)={just=l cellwidth=12%}
+      style(header)={just=l};
+
+define trt01p / order "Treatment|Sequence"
+      style(column)={just=l cellwidth=12%}
+      style(header)={just=l};
+
+define age / display "Age*(Years)"
+      style(column)={just=c cellwidth=10%}
+      style(header)={just=c};
+
+define sex / display "Sex"
+      style(column)={just=l cellwidth=10%}
+      style(header)={just=l};
+
+define race / display "Race"
+      style(column)={just=l cellwidth=12%}
+      style(header)={just=l};
+
+define bhghtsi / display "Height (cm)"
+      style(column)={just=c cellwidth=10%}
+      style(header)={just=c};
+
+define bwghtsi / display "Weight (kg)"
+      style(column)={just=c cellwidth=10%}
+      style(header)={just=c};
+
+define bbmisi / display "BMI (kg/m²)"
+      style(column)={just=c cellwidth=10%}
+      style(header)={just=c};
+
+compute before _page_;
+line @1 "^{style [outputwidth=100% bordertopwidth=0.5pt]}";
+line " ";
+endcomp;
+
+compute after _page_;
+line @1 "^{style [outputwidth=100% bordertopwidth=0.5pt]}";
+endcomp;
+
+break after page1 / page;
+
+run;
+
+
+
+
+
+
+
+
+
+
+
+
+
