@@ -12,9 +12,9 @@ This repo contains clinical study concepts aligned with:
 - Subject Disposition by Treatment (Safety Population)
   
 **Listings**
-⦁	1- Informed Consent
-⦁	2- Subject Demographics
+- Informed Consent
+- Subject Demographics
 
 **Figures**
-⦁	1- Distribution of Hemotology Values by Treatment
-⦁	2- Highlight a Weight Value on a Graph"rewrite for github display"
+- Distribution of Hemotology Values by Treatment
+- Highlight a Weight Value on a Graph"rewrite for github display"
