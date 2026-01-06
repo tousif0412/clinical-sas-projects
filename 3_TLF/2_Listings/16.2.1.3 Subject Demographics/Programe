@@ -1,3 +1,21 @@
+/*******************************************************************
+* Client:  xxxxxx                                                          
+* Project:  yyyyyyy                                                   
+* Program: lis1.SAS  
+*
+* Program Type: Listing
+*
+* Purpose: To produce 16.2.1.3 Subject Demographics
+* Usage Notes: 
+*
+* SAS� Version: 9.4
+* Operating System: Windows 2003 R2 Standard Edition.                   
+*
+* Author: Tousif Tamboli
+* Date Created: 06-Jan-2026
+* Modification History:
+*******************************************************************/   
+
 /* 1. Assign a library reference */
 
 libname adam "/home/u63981529/CL/adam";
@@ -22,16 +40,25 @@ data adsl;
    end;
 run;
 
-/* 4. Define report titles and footnotes */
+/* 4. Include RTF style macro */
+
+%include "/home/u63981529/CL/TLF/macros/RTFSTYLE.sas";
+%_RTFSTYLE_;
+
+/* 5. Define report titles and footnotes */
 
 title1 j=l "COVID-19 AA";
 title2 j=l "Protocol: 043";
 title3 j=c "16.2.1.3 Subject Demographics";
 
-footnote1 j=l "/home/u63925560/CL/Program/tlf/DEMOG.SAS";
+footnote1 j=l "/home/u63981529/CL/Program/tlf/DEMOG.SAS";
 footnote2 j=r "Page ^{thispage} of ^{lastpage}";
 
-/* 5. Generate the report using PROC REPORT */
+options orientation=landscape;
+ods escapechar='^';
+ods rtf file='/home/u63981529/CL/TLF/output/l_16_2_1_3.rtf' style=styles.test;
+
+/* 6. Generate the report using PROC REPORT */
 
 proc report data=adsl nowd split='|' style={outputwidth=100%};
 column page1 usubjid trt01p age sex race bhghtsi bwghtsi bbmisi;
@@ -83,6 +110,7 @@ break after page1 / page;
 
 run;
 
+ods _all_ close ;
 
 
 
