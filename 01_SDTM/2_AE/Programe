@@ -1,0 +1,206 @@
+/*******************************************************************
+* Client:  xxx                                                          
+* Project:  yyy                                                   
+* Program: AE.SAS  
+
+* Program Type: SDTM
+* Purpose: AE      
+
+* Date Created: 08-May-2025
+* Modification History:
+*******************************************************************/ 
+options nofmterr;
+
+libname raw  "/home/u63981529/CL/RAW";
+libname sdtm "/home/u63981529/CL/sdtm";
+libname out  "/home/u63981529/AE_SDTM/Output";
+
+/* Clear WORK */
+proc datasets lib=work kill; run; quit;
+
+/*--------------------------------------------------
+  Read RAW AE
+--------------------------------------------------*/
+data ae_raw;
+   set raw.ae;
+run;
+
+/*--------------------------------------------------
+  Core AE Derivation
+--------------------------------------------------*/
+data ae1;
+   length STUDYID $20 DOMAIN $2 USUBJID $40
+          AETERM AELLT AEDECOD AEHLT AEHLGT AEBODSYS
+          AESOC AEACN AEREL AEOUT $200
+          AESER $1 AESTDTC AEENDTC $16;
+
+   set ae_raw;
+   if AETERM ne " "; 
+
+   STUDYID = 'AA-2020-06';
+   DOMAIN  = 'AE';
+   if SUBNUM ne ' ' then USUBJID = strip(STUDYID)||'-'||strip(SUBNUM);
+   AETERM  = upcase(strip(AETERM));
+
+   /* MedDRA */
+   AELLT     = strip(LLT_NAME);
+   AELLTCD   = input(LLT_CODE, ??best.);
+   AEDECOD   = strip(PT_TERM);
+   AEPTCD    = input(PT_CODE, ??best.);
+   AEHLT     = strip(HLT_TERM);
+   AEHLTCD   = input(HLT_CODE, ??best.);
+   AEHLGT    = strip(HLGT_TERM);
+   AEHLGTCD  = input(HLGT_CODE, ??best.);
+   AEBODSYS  = strip(SOC_TERM);
+   AEBDSYCD  = input(SOC_CODE, ??best.);
+   AESOC     = strip(SOC_TERM);
+   AESOCCD   = input(SOC_CODE, ??best.);
+   
+  AEONGO      =  AEONG;
+
+
+   /* Serious */
+   if AESAE='Y' then AESER='Y';
+   else if AESAE='N' then AESER='N';
+
+   /* Action Taken */
+   if AEACN='NO_CHANGE' then AEACN='DOSE NOT CHANGED';
+   else if AEACN='WITHDRAWN' then AEACN='DRUG WITHDRAWN';
+   else if AEACN='NA' then AEACN='NOT APPLICABLE';
+
+    if not missing (AEACTOTH) and upcase(AEACTOTH) = "X" then AEACNOTH  =  upcase(AEACTSPE);
+
+   /* Causality */
+   if AEREL='UNLIKELY'   then AEREL='UNLIKELY RELATED';
+   else if AEREL='POSSIBLY' then AEREL='POSSIBLY RELATED';
+   else if AEREL='NOTRELATED' then AEREL='NOT RELATED';
+   else if AEREL='DEFINITELY' then AEREL='DEFINITELY RELATED';
+   else if AEREL='PROBABLY' then AEREL='PROBABLY RELATED';
+
+   /* Outcome */
+   if AEOUT='RECOVERED' then AEOUT='RECOVERED/RESOLVED';
+   else if AEOUT='NOTREC' then AEOUT='NOT RECOVERED/NOT RESOLVED';
+
+   /* Seriousness Criteria */
+   if not missing(AECONG) then AESCONG='Y'; else AESCONG = " " ;
+   if not missing(AEDISAB) then AESDISAB='Y'; else AESDISAB = " " ;
+   if not missing(AEDTH)   then AESDTH='Y'; else AESDTH = " " ;
+   if not missing(AEHOSP)  then AESHOSP='Y'; else AESHOSP = " " ;
+   if not missing(AELIFE)  then AESLIFE='Y'; else AESLIFE = " " ;
+   if not missing(AESMIE)  then AESMIE='Y';  else AESMIE = " " ;
+
+   /* ISO 8601 Dates */
+   IF NOT MISSING (AESTDAT) AND not missing (AESTTIM) and AESTTIM NOT IN ("00:UU","00:00","UU:00","U") then 
+      AESTDTC  =  STRIP (AESTDAT) || "T" || STRIP (AESTTIM);
+      
+   IF NOT MISSING (AESTDAT) AND MISSING (AESTTIM) THEN AESTDTC     =  STRIP (AESTDAT);
+   
+   IF NOT MISSING (AESTDAT) AND AESTTIM IN ("00:UU","00:00","UU:00","U") THEN AESTDTC     =  STRIP (AESTDAT);
+
+   IF NOT MISSING (AEENDAT) AND not missing (AEENTIM) and AEENTIM NOT IN ("00:UU","00:00","UU:00","U") then 
+      AEENDTC  =  STRIP (AEENDAT) || "T" || STRIP (AEENTIM);
+   IF NOT MISSING (AEENDAT) AND MISSING (AEENTIM) THEN AEENDTC     =  STRIP (AEENDAT);
+   IF NOT MISSING (AEENDAT) AND AEENTIM  IN ("00:UU","00:00","UU:00","U")THEN
+      AEENDTC     =  STRIP (AEENDAT);
+
+   drop AESTDAT AESTTIM AEENDAT AEENTIM;
+run;
+
+proc sort data=ae1; by USUBJID; run;
+
+/*--------------------------------------------------
+  Epoch Derivation using SE
+--------------------------------------------------*/
+DATA ae2;
+   LENGTH epoch $200 domain $2;
+   MERGE sdtm.se(WHERE=(taetord=1) RENAME=(sestdtc=scrnst seendtc=scrnend) KEEP=usubjid taetord sestdtc seendtc)
+        sdtm.se(WHERE=(taetord=2) RENAME=(sestdtc=cycle1st seendtc=cycle1end) KEEP=usubjid taetord sestdtc seendtc)
+        sdtm.se(WHERE=(taetord=3) RENAME=(sestdtc=ltfupst seendtc=ltfupend) KEEP=usubjid taetord sestdtc seendtc)
+        ae1(in=a);
+   BY usubjid;
+   IF a;
+   IF ltfupst^='' & substr(ltfupst,1,10)<=aeSTDTC<=SUBSTR(ltfupend,1,10) THEN EPOCH='FOLLOW-UP';
+      ELSE IF cycle1st^='' & substr(cycle1st,1,10)<=aeSTDTC<=SUBSTR(cycle1end,1,10) THEN EPOCH='TREATMENT';
+      ELSE IF scrnst^='' & SUBSTR(scrnst,1,10)<=aeSTDTC<=SUBSTR(scrnend,1,10) THEN EPOCH='SCREENING';
+RUN;
+
+/*--------------------------------------------------
+  Study Day (AESTDY / AEENDY)
+--------------------------------------------------*/
+proc sort data=sdtm.dm out=dm1(keep=usubjid rfstdtc) nodupkey;
+   by usubjid;
+run;
+
+data ae3;
+   merge ae2(in=a) dm1(in=b);
+   by usubjid;
+   if a and b;
+
+   rfstdtc_n = datepart(input(rfstdtc, ??is8601dt.));
+   aestdtc_n = input(AESTDTC, ??yymmdd10.);
+   aeendtc_n = input(AEENDTC, ??yymmdd10.);
+
+   if aestdtc_n ne . then
+      aestdy = aestdtc_n - rfstdtc_n + (aestdtc_n >= rfstdtc_n);
+
+   if aeendtc_n ne . then
+      aeendy = aeendtc_n - rfstdtc_n + (aeendtc_n >= rfstdtc_n);
+run;
+
+/*--------------------------------------------------
+  AESEQ
+--------------------------------------------------*/
+proc sort data=ae3;
+   by USUBJID AESTDTC AEENDTC AETERM;
+run;
+
+data ae4;
+   set ae3;
+   by USUBJID;
+   if first.USUBJID then AESEQ=1;
+   else AESEQ+1;
+run;
+
+/*--------------------------------------------------
+  Final SDTM AE
+--------------------------------------------------*/
+data out.AE(label='Adverse Events');
+retain
+STUDYID 
+DOMAIN 
+USUBJID 
+AESEQ
+AETERM 
+AELLT 
+AELLTCD 
+AEDECOD 
+AEPTCD
+AEHLT 
+AEHLTCD 
+AEHLGT 
+AEHLGTCD
+AEBODSYS 
+AEBDSYCD 
+AESOC 
+AESOCCD
+AESEV 
+AESER 
+AEACN 
+AEACNOTH 
+AEREL 
+AEOUT
+AESCONG 
+AESDISAB 
+AESDTH
+AESHOSP 
+AESLIFE 
+AESMIE
+EPOCH 
+AESTDTC 
+AEENDTC 
+AESTDY 
+AEENDY;
+set ae4;
+run;
+
+
