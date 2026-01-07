@@ -1,0 +1,88 @@
+/*******************************************************************
+* Domain   : LB (Laboratory Tests)
+* Author   : Tousif Tamboli
+* Purpose  : Convert RAW LB to SDTM LB
+*******************************************************************/
+
+options validvarname=upcase;
+proc datasets lib=work kill nolist; quit;
+
+libname raw  "/home/u63981529/CL/RAW";
+libname sdtm "/home/u63981529/CL/SDTM";
+
+/*---------------------------------------------------------
+* Step 1: Read RAW LB
+---------------------------------------------------------*/
+data lb_raw;
+    set raw.lb;
+run;
+
+/*---------------------------------------------------------
+* Step 2: Create SDTM LB
+---------------------------------------------------------*/
+data lb(label="Laboratory Tests");
+set lb_raw;
+DOMAIN = "LB";
+STUDYID = "AA-2020-06";
+USUBJID = catx("-", STUDYID,SUBJID);
+
+/*--- Test Name & Code */
+LBTESTCD = "HGB";
+LBTEST   = "Hemoglobin";
+
+/*--- Sequence ---*/
+ LBSEQ = _N_;
+
+/*--- Original Result ---*/
+        LBORRES  = put(LBORRES,?? best.);
+        LBORRESU = LBORRESU;
+
+    /*--- Standardized Result ---*/
+    LBSTRESN = LBORRES;
+    LBSTRESC = LBORRES;
+    LBSTRESU = LBORRESU;
+
+    /*--- Normal Range ---*/
+    LBSTNRLO = LBLOW;
+    LBSTNRHI = LBHIGH;
+
+    if not missing(LBSTRESN) then do;
+        if LBSTRESN < LBSTNRLO then LBNRIND = "LOW";
+        else if LBSTRESN > LBSTNRHI then LBNRIND = "HIGH";
+        else LBNRIND = "NORMAL";
+    end;
+
+    /*--- Status ---*/
+    LBSTAT   = "";
+    LBREASND = "";
+
+    /*--- Date/Time ---*/
+    if not missing(LBDTC) then do;
+        if not missing(LBTIME) then
+            LBDTC_N= cats(put(LBDTC,yymmdd10.),"T",put(LBTIME,tod5.));
+        else
+            LBDT_N = put(LBDTC,yymmdd10.);
+    end;
+    *  NORMAL RANGE;
+    LBSTNRLO = .;         * lower limit;
+    LBSTNRHI = .;         * upper limit;
+
+    if not missing(LBSTRESN) then do;
+        if LBSTRESN < LBSTNRLO then LBNRIND = "LOW";
+        else if LBSTRESN > LBSTNRHI then LBNRIND = "HIGH";
+        else LBNRIND = "NORMAL";
+    end;
+
+    /*--- Specimen & Method ---*/
+    LBSPEC   = "BLOOD";
+    LBMETHOD = "AUTOMATED ANALYZER";
+
+    keep STUDYID DOMAIN USUBJID LBSEQ
+         LBTESTCD LBTEST
+         LBORRES LBORRESU
+         LBSTRESC LBSTRESN LBSTRESU
+         LBSTNRLO LBSTNRHI LBNRIND
+         LBSTAT LBREASND
+         LBSPEC LBMETHOD LBDTC;
+run;
+
