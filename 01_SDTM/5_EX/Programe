@@ -1,0 +1,174 @@
+/*******************************************************************
+* Client:  xxx
+* Project: yyy
+* Program: EX.SAS
+* Domain : EX (Exposure)
+*******************************************************************/
+
+libname raw  "/home/u63981529/CL/RAW";
+libname sdtm "/home/u63981529/CL/sdtm";
+
+/*---------------------------------------------------------
+* 1. Read RAW EX
+---------------------------------------------------------*/
+data ex_raw;
+    set raw.ex;
+run;
+
+/*---------------------------------------------------------
+* 2. Derive Core SDTM Variables
+---------------------------------------------------------*/
+data ex_1;
+    set ex_raw;
+
+    length STUDYID DOMAIN $20 USUBJID $40
+           EXSTDTC EXENDTC $19
+           EXDOSU EXDOSFRM EXROUTE EXDOSFRQ
+           EXSTAT EXREASND $40;
+
+    STUDYID = "AA-2020-06";
+    DOMAIN  = "EX";
+    USUBJID = catx("-", STUDYID, SUBNUM);
+
+    VISITNUM = VISITID;
+    VISIT    = VISNAME;
+
+    /*-------------------------------
+     EXSTDTC
+    --------------------------------*/
+
+if EXSTDAT ne . and EXSTTIM ne . then 
+EXSTDTC=strip(put(EXSTDAT,yymmdd10.))||"T"||strip(put(EXSTTIM,TOD8.));
+
+if EXSTDAT ne . and EXSTTIM in ("00:UU","00:00","UU:00","U") then 
+EXSTDTC=strip(put(EXSTDAT,yymmdd10.));
+
+if EXSTDAT ne . and EXSTTIM eq . then
+EXSTDTC=strip(put(EXSTDAT,yymmdd10.));
+
+    /* EXENDTC = same as start for single-dose */
+    EXENDTC = EXSTDTC;
+
+    /*-------------------------------
+     Dose & Administration
+    --------------------------------*/
+    if not missing(EXDOSE) then EXDOSU = "ug";
+
+    EXDOSFRM = "INJECTION";
+    EXROUTE  = "INTRAVENOUS";
+    EXDOSFRQ = "EVERY WEEK";
+
+    /*-------------------------------
+     Exposure Status
+    --------------------------------*/
+    if upcase(EXYN) = "Y" then do;
+        EXSTAT   = "";
+        EXREASND= "";
+    end;
+    else if upcase(EXYN) = "N" then do;
+        EXDOSE   = .;
+        EXSTAT  = "NOT DONE";
+        EXREASND= coalescec(EXREAS,"NOT TAKEN");
+    end;
+run;
+
+/*---------------------------------------------------------
+* 3. Get Reference Start Date (DM)
+---------------------------------------------------------*/
+proc sort data=sdtm.dm out=dm nodupkey;
+    by usubjid;
+run;
+
+data dm;
+    set dm;
+    RFSTDTC_N = input(RFSTDTC,is8601da.);
+    format RFSTDTC_N yymmdd10.;
+    keep USUBJID RFSTDTC_N;
+run;
+
+/*---------------------------------------------------------
+* 4. Study Day Derivation
+---------------------------------------------------------*/
+data ex_2;
+    merge ex_1(in=a) dm(in=b);
+    by USUBJID;
+    if a and b;
+
+    EXSTDTC_N = input(EXSTDTC,yymmdd10.);
+    EXENDTC_N = input(EXENDTC,yymmdd10.);
+
+    if not missing(EXSTDTC_N) then do;
+        if EXSTDTC_N >= RFSTDTC_N then EXSTDY = EXSTDTC_N - RFSTDTC_N + 1;
+        else EXSTDY = EXSTDTC_N - RFSTDTC_N;
+    end;
+
+    if not missing(EXENDTC_N) then do;
+        if EXENDTC_N >= RFSTDTC_N then EXENDY = EXENDTC_N - RFSTDTC_N + 1;
+        else EXENDY = EXENDTC_N - RFSTDTC_N;
+    end;
+run;
+
+/*---------------------------------------------------------
+* 5. EPOCH Derivation
+---------------------------------------------------------*/
+proc sort data=ex_2;
+    by USUBJID;
+run;
+
+data ex_3;
+    length EPOCH $20;
+    merge
+        sdtm.se(where=(taetord=1) rename=(sestdtc=scrnst seendtc=scrnend)
+                keep=usubjid taetord sestdtc seendtc)
+        sdtm.se(where=(taetord=2) rename=(sestdtc=trtst seendtc=trtend)
+                keep=usubjid taetord sestdtc seendtc)
+        sdtm.se(where=(taetord=3) rename=(sestdtc=fu_st seendtc=fu_end)
+                keep=usubjid taetord sestdtc seendtc)
+        ex_2(in=a);
+    by USUBJID;
+    if a;
+
+    if trtst ne '' and substr(trtst,1,10) <= EXSTDTC <= substr(trtend,1,10)
+        then EPOCH="TREATMENT";
+    else if scrnst ne '' and substr(scrnst,1,10) <= EXSTDTC <= substr(scrnend,1,10)
+        then EPOCH="SCREENING";
+    else if fu_st ne '' and substr(fu_st,1,10) <= EXSTDTC <= substr(fu_end,1,10)
+        then EPOCH="FOLLOW-UP";
+run;
+
+/*---------------------------------------------------------
+* 6. Derive EXSEQ
+---------------------------------------------------------*/
+proc sort data=ex_3;
+    by USUBJID EXSTDTC;
+run;
+
+data ex_final;
+    set ex_3;
+    by USUBJID;
+    if first.USUBJID then EXSEQ=1;
+    else EXSEQ+1;
+run;
+
+/*---------------------------------------------------------
+* 7. Final SDTM EX Dataset
+---------------------------------------------------------*/
+data sdtm.ex(label="Exposure");
+    retain STUDYID DOMAIN USUBJID EXSEQ
+           EXTRT EXDOSE EXDOSU
+           EXDOSFRM EXROUTE EXDOSFRQ
+           VISITNUM VISIT
+           EXSTDTC EXENDTC EXSTDY EXENDY
+           EXSTAT EXREASND
+           EPOCH;
+
+    set ex_final;
+
+    keep STUDYID DOMAIN USUBJID EXSEQ
+         EXTRT EXDOSE EXDOSU
+         EXDOSFRM EXROUTE EXDOSFRQ
+         VISITNUM VISIT
+         EXSTDTC EXENDTC EXSTDY EXENDY
+         EXSTAT EXREASND
+         EPOCH;
+run;
