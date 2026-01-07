@@ -1,0 +1,225 @@
+/*******************************************************************
+* Client:  xxxxxx                                                          
+* Project:  yyyyyyy                                                   
+* Program: DM.SAS  
+*
+* Program Type: SDTM
+*
+* Purpose: To produce DM
+* Usage Notes: 
+*
+* SAS� Version: 9.4
+* Operating System: Windows 2003 R2 Standard Edition.                   
+*
+* Author: Tousif Tamboli
+* Date Created: 11-March-2025
+* Modification History:
+*******************************************************************/   
+options nofmterr;
+libname raw "/home/u63981529/CL/RAW";
+
+/* Clear WORK library */
+proc datasets lib=work kill;
+run; quit;
+
+/*-------------------------------
+  Create DM from RAW.DM
+--------------------------------*/
+data dm1;
+   set raw.dm(rename=(age=agex sex=sexx race=racex ethnic=ethnicx));
+   length ethnic $200;
+
+   STUDYID  = 'AA-2020-06';
+   DOMAIN   = 'DM';
+   SITEID   = SITENUM;
+   SUBJID   = substr(subnum,4);
+   USUBJID  = catx('-', STUDYID, subnum);
+
+   BRTHDTC  = put(BRTHDAT, is8601da.);
+   AGE      = AGEX;
+   AGEU     = 'YEARS';
+   SEX      = SEXX;
+   RACE     = RACEX;
+
+   if ETHNICX='HISP' then ETHNIC='HISPANIC OR LATINO';
+   else if ETHNICX='NHISP' then ETHNIC='NOT HISPANIC OR LATINO';
+   else if ETHNICX='U' then ETHNIC='UNKNOWN';
+   else if ETHNICX='DECLINED TO ANSWER' then ETHNIC='NOT REPORTED';
+
+   keep STUDYID DOMAIN SITEID SUBJID USUBJID BRTHDTC AGE AGEU SEX RACE ETHNIC;
+run;
+
+proc sort data=dm1; by USUBJID; run;
+
+/*-------------------------------
+  Informed Consent Date
+--------------------------------*/
+data ic;
+   set raw.ic;
+   STUDYID = 'AA-2020-06';
+   DOMAIN  = 'DM';
+   SITEID  = SITENUM;
+   SUBJID  = substr(subnum,4);
+   USUBJID = catx('-', STUDYID, subnum);
+
+   RFICDTC = put(ICDAT, is8601da.);
+   keep USUBJID RFICDTC;
+run;
+
+proc sort data=ic; by USUBJID; run;
+
+/*-------------------------------
+  Disposition / Death
+--------------------------------*/
+data ds1;
+   set raw.ds;
+   STUDYID = 'AA-2020-06';
+   DOMAIN  = 'DM';
+   SITEID  = SITENUM;
+   SUBJID  = substr(subnum,4);
+   USUBJID = catx('-', STUDYID, subnum);
+
+   if DSDTHDAT ne . then do;
+      DTHDTC = put(DSDTHDAT, yymmdd10.);
+      DTHFL  = 'Y';
+   end;
+
+   if DSLVDAT ne . then RFPENDTC = put(DSLVDAT, yymmdd10.);
+   keep USUBJID DTHDTC DTHFL RFPENDTC;
+run;
+
+proc sort data=ds1; by USUBJID; run;
+
+data ds;
+   set ds1;
+   by USUBJID;
+   if LAST.USUBJID;
+run;
+
+/*-------------------------------
+  Exposure Dates
+--------------------------------*/
+proc sort data=raw.ex out=ex1;
+   by subnum EXSTDAT EXSTTIM;
+run;
+
+data ex;
+   set ex1;
+   by subnum;
+   STUDYID = 'AA-2020-06';
+   DOMAIN  = 'DM';
+   SITEID  = SITENUM;
+   SUBJID  = substr(subnum,4);
+   USUBJID = catx('-', STUDYID, subnum);
+
+   retain RFSTDTC RFXSTDTC RFENDTC RFXENDTC;
+
+   if first.subnum then do;
+      RFSTDTC  = catx('T', put(EXSTDAT,yymmdd10.), put(EXSTTIM,tod8.));
+      RFXSTDTC = RFSTDTC;
+   end;
+
+   if last.subnum then do;
+      RFENDTC  = catx('T', put(EXSTDAT,yymmdd10.), put(EXSTTIM,tod8.));
+      RFXENDTC = RFENDTC;
+      output;
+   end;
+
+   keep USUBJID RFSTDTC RFENDTC RFXSTDTC RFXENDTC;
+run;
+
+proc sort data=ex; by USUBJID; run;
+
+/*-------------------------------
+  Treatment Assignment
+--------------------------------*/
+data trt;
+   set raw.dummy_rnd;
+   length ARMCD ACTARMCD $8 ARM ACTARM $200;
+
+   STUDYID = 'AA-2020-06';
+   DOMAIN  = 'DM';
+
+   SITEID  = substr(USUBJID,12,3);
+   SUBJID  = substr(USUBJID,15);
+   USUBJID = catx('-', STUDYID, substr(USUBJID,12));
+
+   ARMCD    = TRTCD;
+   ACTARMCD= TRTCD;
+
+   if ARMCD='TQ' then ARM='TQU';
+   else if ARMCD='PLACEBO' then ARM='PLACEBO';
+
+   if ACTARMCD='TQ' then ACTARM='TQU';
+   else if ACTARMCD='PLACEBO' then ACTARM='PLACEBO';
+
+   keep USUBJID ARMCD ARM ACTARMCD ACTARM;
+run;
+
+proc sort data=trt; by USUBJID; run;
+
+/*-------------------------------
+  Screen Failure
+--------------------------------*/
+data scf;
+   set raw.dat_sub;
+   STUDYID = 'AA-2020-06';
+   DOMAIN  = 'DM';
+   SITEID  = SITENUM;
+   SUBJID  = substr(subnum,4);
+   USUBJID = catx('-', STUDYID, subnum);
+
+   if STATUSID=15 then do;
+      ARMNRS   = 'SCREEN FAILURE';
+      ACTARMUD= 'SCREEN FAILURE';
+   end;
+
+   keep USUBJID ARMNRS ACTARMUD;
+run;
+
+proc sort data=scf; by USUBJID; run;
+
+/*-------------------------------
+  Final DM Dataset
+--------------------------------*/
+data dm;
+   merge dm1(in=a) ic ds ex trt scf;
+   by USUBJID;
+   if a;
+
+   COUNTRY='USA';
+run;
+
+/*-------------------------------
+  SDTM Variable Order
+--------------------------------*/
+data dm;
+retain 
+STUDYID 
+DOMAIN 
+USUBJID 
+SUBJID
+RFSTDTC 
+RFENDTC 
+RFXSTDTC 
+RFXENDTC
+RFICDTC 
+RFPENDTC 
+DTHDTC 
+DTHFL
+SITEID
+BRTHDTC
+AGE 
+AGEU 
+SEX 
+RACE 
+ETHNIC
+ARMCD 
+ARM 
+ACTARMCD 
+ACTARM 
+ARMNRS 
+ACTARMUD 
+COUNTRY;
+set dm;
+run;
