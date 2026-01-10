@@ -1,0 +1,166 @@
+ /*******************************************************************
+* Client:  xxxxxx                                                          
+* Project:  yyyyyyy                                                   
+* Program: tab3_1.SAS  
+*
+* Program Type: Table
+*
+* Purpose: To produce Table 14.1.3  Subject Demographics - Age (Safety Population)
+* Usage Notes: 
+*
+* SAS� Version: 9.4
+* Operating System: Windows 2011 .                   
+*
+* Author: Tousif Tamboli
+* Date Created: 11-JUN-2025
+* Modification History:
+*******************************************************************/   
+/* STEP 1: Read ADSL and Prepare Basic Variables */
+    
+libname adam '/home/u63981529/CL/adam';
+
+/* STEP 2: Create TOTAL Column */
+
+/* Active Treatment Subjects */
+
+DATA ADSL1;
+   SET ADAM.ADSL;
+   IF TRT01A NE '' and saffl eq 'Y';
+   KEEP USUBJID TRT01A TRT01AN AGE;
+RUN;
+
+/* Create TOTAL (ALL) Group */
+DATA ADSL2;
+   SET ADAM.ADSL;
+   IF TRT01A NE '' and saffl eq 'Y';
+   TRT01A="ALL";
+   TRT01AN=3;
+   KEEP USUBJID TRT01A TRT01AN AGE;
+RUN;
+
+/* Combine Treatment + Total */
+DATA ADSL3;
+   SET ADSL1 ADSL2;
+RUN;
+
+/* Calculate Denominators (N per Treatment) */
+PROC SQL NOPRINT;
+   CREATE TABLE TRT AS 
+      SELECT TRT01AN,TRT01A,COUNT (USUBJID) AS DENOM
+      FROM ADSL3
+      GROUP BY TRT01AN ,TRT01A
+      ORDER BY TRT01AN,TRT01A
+      ;
+/* Store N values into macro variables EX DRUG A (N=50) */
+   SELECT DENOM INTO: N1 - :N3 FROM TRT;
+QUIT;
+%PUT &N1 &N2 &N3;
+
+
+/*/*/*/*/*/*/*/*/*/*BODY SECTION STATS*/*/*/*/*/*/*/*/*/*/;
+
+/*get five stat as required in mock shell*/
+PROC SUMMARY DATA=ADSL3 nway;
+   CLASS TRT01AN;
+   VAR AGE;
+   OUTPUT OUT=ADSL_SUM n=_n mean=_mean median=_median std=_std min=_min max=_max;
+run;
+
+/* makeupstart */
+
+
+/*convert all stat from numeric to character*/
+data adsl_sum2;
+   set adsl_sum;
+
+   cn= left (put(_n,3.));
+   cmin=left (put(_min,3.));
+   cmax=left (put(_max,3.));
+
+   cmedian=left (put(_median,4.1));
+   cmean=left (put(_mean,4.1));
+   cstd=left (put(_std,5.2));
+run;
+
+proc transpose data=adsl_sum2 out=adsl_sum3 prefix=t;
+   id trt01an;
+   var cn cmean cmedian cstd cmin cmax;
+run;
+
+data adsl_sum4;
+   set adsl_sum3;
+   length stat $100.;
+   if _NAME_ ='cn' then do; stat='N';od=1;end;
+   if _NAME_ ='cmean' then do; stat='Mean';od=2;end;
+   if _NAME_ ='cstd' then do; stat='SD';od=3;end;
+   if _NAME_ ='cmedian' then do; stat='Median';od=4;end;
+   if _NAME_ ='cmin' then do; stat='Minimum';od=5;end;
+   if _NAME_ ='cmax' then do; stat='Maximum';od=6;end;
+run;
+proc sort;by od;run;
+
+data label;
+   length stat $100.;
+   stat='Age (Years) ';
+   od=0;
+run;
+
+data adsl_sum5;
+   set label adsl_sum4;
+run;
+proc sort;by od;run;
+
+/* 4. Include RTF style macro */
+%include "/home/u63981529/CL/TLF/macros/RTFSTYLE.sas";
+%_RTFSTYLE_;
+
+/* 5. Assign titles and footnotes */
+
+title1 j=l 'COVID-19 AA';
+title2 j=l 'Protocol: 043';
+title3 j=c 'Table 14.1.3  Subject Demographics - Age (Safety Population)';
+
+footnote1 j=l '/home/u63981529/CL/Program/tlf/tab3_1.SAS';
+
+options orientation=landscape;
+ods escapechar='^';
+ods rtf file='/home/u63981529/CL/TLF/output/Table/t_14_1_3.rtf' style=styles.test;
+
+/* 6. Generate the report using PROC REPORT */
+
+proc report data=adsl_sum5 split='|' style= {outputwidth=100%};
+column od stat t1 t2 t3;
+
+define od/order noprint;
+
+define stat/ "CATEGORY"
+style (column)={just=l cellwidth=20% asis=on}
+style (header)={just=l cellwidth=20% asis=on}
+   ;
+
+define t1/ "DRUG A|(N=&N1)"
+style (column)={just=l cellwidth=10%}
+style (header)={just=l cellwidth=10%}
+   ;
+
+define t2/ "DRUG B|(N=&N2)"
+style (column)={just=l cellwidth=10%}
+style (header)={just=l cellwidth=10%}
+;
+
+define t3/ "ALL|(N=&N3)"
+style (column)={just=l cellwidth=10%}
+style (header)={just=l cellwidth=10%}
+   ;
+
+compute before _page_;
+line@1 "^{style [outputwidth=100% bordertopwidth=0.5pt]}";
+endcomp;
+
+compute after _page_;
+line@1 "^{style [outputwidth=100% bordertopwidth=0.5pt]}";
+endcomp;
+
+run;
+
+ods _all_ close;
