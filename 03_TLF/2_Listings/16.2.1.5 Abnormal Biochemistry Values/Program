@@ -1,0 +1,133 @@
+/*******************************************************************
+* Client:  xxxxxx                                                          
+* Project:  yyyyyyy                                                   
+* Program: lis5_6.SAS  
+*
+* Program Type: Listing
+*
+* Purpose: To produce 16.2.1.5 Abnormal Biochemistry Values 16.2.1.6 Abnormal Hematology Values 
+* Usage Notes: 
+*
+* SAS� Version: 9.4
+* Operating System: Windows 2011                 
+*
+* Author: Tousif Tamboli
+* Date Created: 14-JUN-2025
+* Modification History:
+*******************************************************************/          
+libname adam '/home/u63981529/CL/adam';
+
+/* 2. KEEP REQUIRED VARIABLES AS PER MOCK SHELL*/
+
+%macro lab (v1=,v2=,v3=,v4=);
+
+   DATA ADLB;
+
+   SET ADAM.ADLB;
+
+   IF PARCAT1="&v1" and ANRIND not in ('NORMAL','');
+   ADTC= PUT (ADT,YYMMDD10.);
+   AVAL_C= STRIP (PUT (AVAL,BEST.));
+
+   if ANRLO ne . and ANRHI ne . then 
+   LO_HI= STRIP (PUT (ANRLO,BEST.))||"-"||STRIP (PUT (ANRHI,BEST.));
+   KEEP USUBJID PARAMN PARAM AVISITN AVISIT  LO_HI  ADTC AVAL_C ANRIND;
+   RUN;
+
+   PROC SORT;BY USUBJID PARAMN PARAM AVISITN AVISIT;RUN;
+
+/* 3. Apply manual pagination logic (15 records per page) */
+ 
+   DATA ADLB;
+   SET ADLB;
+   RETAIN LNT 0 PAGE1 1;
+   LNT+1;
+
+   IF LNT>15 THEN DO;
+   PAGE1=PAGE1+1;
+   LNT=1;
+   END;
+   RUN;
+
+/* 4. Include RTF style macro */
+%include "/home/u63981529/CL/TLF/macros/RTFSTYLE.sas";
+%_RTFSTYLE_;
+
+/* 5. Assign titles and footnotes */
+   title1 j=l 'COVID-19 AA';
+   title2 j=l 'Protocol: 043';
+   title3 j=c "&v2";
+
+   footnote1 j=l "/home/u63981529/CL/Program/tlf/&v3.SAS";
+
+   options orientation=landscape;
+   ods escapechar='^';
+   ods rtf file="/home/u63981529/CL/TLF/output/Listing/&v4..rtf" style=styles.test;
+
+/* 6. Generate the report using PROC REPORT */
+
+   proc report data=adlb split='|'   style= {outputwidth=100%};
+
+      column page1 USUBJID PARAMN PARAM AVISITN AVISIT  LO_HI  ADTC AVAL_C ANRIND;
+
+      define page1/order noprint;
+
+      define usubjid/order "Subject|Number"
+      style (column)={just=l cellwidth=15%}
+      style (header)={just=l cellwidth=15%}
+      ;
+
+      define PARAMN/order noprint;
+      define PARAM/ "Test"
+      style (column)={just=l cellwidth=25%}
+      style (header)={just=l cellwidth=25%}
+      ;
+
+      define AVISITN/order noprint;
+      define AVISIT/ "Visit"
+      style (column)={just=l cellwidth=17%}
+      style (header)={just=l cellwidth=17%}
+      ;
+
+
+      define LO_HI/ "Normal Range"
+      style (column)={just=l cellwidth=10%}
+      style (header)={just=l cellwidth=10%}
+      ;
+
+
+      define ADTC/ "Date/Time of|Measurement"
+      style (column)={just=l cellwidth=10%}
+      style (header)={just=l cellwidth=10%}
+      ;
+
+      define AVAL_C/ "Result"
+      style (column)={just=l cellwidth=5%}
+      style (header)={just=l cellwidth=5%}
+      ;
+      define ANRIND/ "Flag"
+      style (column)={just=l cellwidth=10%}
+      style (header)={just=l cellwidth=10%}
+      ;
+
+      compute before _page_;
+      line@1 "^{style [outputwidth=100% bordertopwidth=0.5pt]}";
+      endcomp;
+
+
+      compute after _page_;
+      line@1 "^{style [outputwidth=100% bordertopwidth=0.5pt]}";
+      endcomp;
+
+      break after page1/page;
+   run;
+
+   ods _all_ close;
+%mend lab;
+
+%lab (v1=CHEMISTRY,v2= %str (16.2.1.5 Abnormal Biochemistry Values),
+      v3=LIS5,v4= %str (L_16_2_1_5));
+
+
+%lab (v1=HEMATOLOGY,v2= %str (16.2.1.6 Abnormal Hematology Values),
+      v3=LIS6,v4= %str (L_16_2_1_6));
