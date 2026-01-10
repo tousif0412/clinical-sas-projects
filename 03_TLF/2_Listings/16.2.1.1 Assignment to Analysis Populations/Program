@@ -1,0 +1,103 @@
+/*******************************************************************
+* Client:  xxxxxx                                                          
+* Project:  yyyyyyy                                                   
+* Program: lis1.SAS  
+*
+* Program Type: Listing
+*
+* Purpose: To produce 16.2.1.1 Assignment to Analysis Populations
+* Usage Notes: 
+*
+* SAS� Version: 9.4
+* Operating System: Windows 2011 .                   
+*
+* Author: Tousif Tamboli
+* Date Created: 11-JUN-2025
+* Modification History:
+*******************************************************************/     
+/* 1. GET ADAM DATASET INTO SAS */     
+libname adam '/home/u63981529/CL/adam';
+
+/* 2. KEEP REQUIRED VARIABLES AS PER MOCK SHELL*/
+DATA ADSL;
+   SET ADAM.ADSL;
+   KEEP USUBJID SAFFL ITTFL PPROTFL RANDFL;
+RUN;
+
+/* 3. Apply manual pagination logic (20 records per page) */
+
+DATA ADSL;
+   SET ADSL;
+   RETAIN LNT 0 PAGE1 1;
+   LNT+1;
+   IF LNT>20 THEN DO;
+      PAGE1=PAGE1+1;
+      LNT=1;
+   END;
+RUN;
+
+/* 4. Include RTF style macro */
+%include "/home/u63981529/CL/TLF/macros/RTFSTYLE.sas";
+%_RTFSTYLE_;
+
+
+/* 5. Assign titles and footnotes */
+
+title1 j=l 'COVID-19 AA';
+title2 j=l 'Protocol: 043';
+title3 j=c '16.2.1.1 Assignment to Analysis Populations';
+
+footnote1 j=l '/home/u63981529/CL/Program/tlf/LIS1.SAS';
+
+ods listing close;
+options orientation=landscape;
+ods escapechar='^';
+ods rtf file='/home/u63981529/CL/TLF/output/Listing/L_16_2_1_1.rtf' style=styles.test;
+
+/* 6. Generate the report using PROC REPORT */
+ 
+proc report data=adsl split='|' style= {outputwidth=100%};
+
+   column page1 usubjid  SAFFL ITTFL PPROTFL RANDFL;
+
+   define page1/order noprint;
+
+   define usubjid/order "Subject|Number"
+   style (column)={just=l cellwidth=20%}
+   style (header)={just=l cellwidth=20%}
+   ;
+   define SAFFL/order "Safety|Population"
+   style (column)={just=l cellwidth=20%}
+   style (header)={just=l cellwidth=20%}
+   ;
+
+   define ITTFL/order "Intent-To-Treat|Population"
+   style (column)={just=l cellwidth=20%}
+   style (header)={just=l cellwidth=20%}
+   ;
+
+   define PPROTFL/order "Per-Protocol|Population"
+   style (column)={just=l cellwidth=20%}
+   style (header)={just=l cellwidth=20%}
+   ;
+
+   define RANDFL/order "Randomized|Population"
+   style (column)={just=l cellwidth=19%}
+   style (header)={just=l cellwidth=19%}
+   ;
+
+   compute before _page_;
+      line@1 "^{style [outputwidth=100% bordertopwidth=0.5pt]}";
+   endcomp;
+
+
+   compute after _page_;
+      line@1 "^{style [outputwidth=100% bordertopwidth=0.5pt]}";
+   endcomp;
+
+   break after page1/page;
+run;
+
+ods _all_ close;
+
+
