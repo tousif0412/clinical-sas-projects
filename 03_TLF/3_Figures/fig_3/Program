@@ -1,0 +1,47 @@
+
+libname adam '/home/u63981529/CL/adam';
+
+data lb1;
+set adam.adlb;
+
+trt=trt01a;
+week=avisitn;
+perc=chg;
+lo=ANRLO;
+hi=ANRHI;
+x1=15;
+if trt ne '';
+if paramcd eq 'ALT';
+if week=15 then do;
+end=perc;end;
+keep trt week perc lo hi x1 end;
+run;
+proc sort nodupkey;by _all_;run;
+
+TITLE1 J=L "COVID-19 AA";
+TITLE2 J=L "Protocol: 043";
+title3 j=c "Figure 16.1.3 ALT Change from Baseline";
+
+options orientation=landscape;
+ods escapechar='^';
+ods rtf file ="//home/u63981529/CL/TLF/output/Figures/16_1_3.rtf" style=styles.default;
+
+ods graphics / reset width=600px height=400px imagename='Allergy' imagefmt=static;
+
+proc sgplot data=lb1;
+   band y=x1 lower=12.1 upper=15 / transparency=.8 fillattrs=graphdata1;
+   scatter x=week y=perc / group=trt yerrorlower=lo yerrorupper=hi
+       markerattrs=(symbol=circlefilled) name="scat";
+   series x=week y=perc / group=trt lineattrs=(pattern=solid);
+   series x=week y=end / group=trt markers lineattrs=(pattern=shortdash)
+       markerattrs=(symbol=circle);
+   xaxis integer values=(0 to 15 by 1) label="Weeks in Treatment";
+   yaxis label="Change";
+   refline 0; 
+   refline 13.55 / axis=x 
+       labelloc=outside labelpos=min lineattrs=(thickness=0px);
+   keylegend "scat" / title="" noborder;
+run;
+ODS _all_ close; 
+ods listing;
+
