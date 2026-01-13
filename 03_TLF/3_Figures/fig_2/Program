@@ -1,0 +1,51 @@
+/* Step 1 — Create a custom ODS style */
+proc template;
+   define style styles.symbols;
+   parent=styles.statistical;
+      style graphdata1 /
+          markersymbol='circlefilled'
+          contrastcolor=green;
+      style graphdata2 /
+          markersymbol='circlefilled'
+          contrastcolor=red;
+   end;
+run;
+
+/* Step 2 — Assign ADAM library */
+
+libname adam '/home/u63981529/CL/adam';
+
+/* Step 3 — Prepare Hematology lab data */
+
+data adsl;
+set adam.adsl;
+label x="AGE";
+label y="Weight";
+x=age;
+y=BWGHTSI;
+Type=trt01a;
+if trt01a ne '';
+keep  x y  Type;
+run;
+
+proc sort nodupkey;by x y type;run;
+
+/* Step 4 — Set Title */
+
+title1 j=l "COVID-19 AA";
+title2 j=l "Protocol: 043-1810";
+title3 j=c "Figure 16.1.2 Highlight a Weight Value on a Graph";
+
+/* Step 5 — Open ODS RTF output */
+
+options orientation=landscape;
+ods escapechar='^';
+ods rtf file ="/home/u63981529/CL/TLF/output/Figures/16_1_2.rtf" style=styles.symbols;
+
+/* Step 6 — Create a grouped VBOX plot */
+proc sgplot data=adsl;
+   series x=X y=Y;
+   scatter x=X y=Y / group=Type;
+run;
+
+ODS _all_ close; 
